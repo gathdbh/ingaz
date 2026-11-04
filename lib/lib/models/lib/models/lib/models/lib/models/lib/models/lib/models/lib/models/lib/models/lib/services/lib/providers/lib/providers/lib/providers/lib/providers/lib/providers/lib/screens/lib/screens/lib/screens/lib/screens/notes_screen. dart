@@ -1,0 +1,59 @@
+import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
+import '../models/note.dart';
+
+class NotesScreen extends StatefulWidget {
+  const NotesScreen({super.key});
+  @override State<NotesScreen> createState() => _NotesScreenState();
+}
+class _NotesScreenState extends State<NotesScreen> {
+  late Box<Note> _box;
+  @override void initState() { super.initState(); _box = Hive.box<Note>('notes'); _box.watch().listen((_) => setState(() {})); }
+  @override
+  Widget build(BuildContext context) {
+    final notes = _box.values.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return Scaffold(
+      appBar: AppBar(title: const Text('الملاحظات')),
+      floatingActionButton: FloatingActionButton(onPressed: () => _addNote(context), child: const Icon(Icons.add)),
+      body: notes.isEmpty ? const Center(child: Text('لا توجد ملاحظات بعد')) : ListView.builder(
+        itemCount: notes.length,
+        itemBuilder: (_, i) {
+          final n = notes[i];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: ListTile(
+              leading: IconButton(
+                icon: Icon(n.isDone ? Icons.check_circle : Icons.circle_outlined, color: n.isDone ? Colors.green : Colors.grey),
+                onPressed: () async { n.isDone = !n.isDone; await n.save(); setState(() {}); },
+              ),
+              title: Text(n.text, style: TextStyle(decoration: n.isDone ? TextDecoration.lineThrough : null)),
+              subtitle: Text(DateFormat('yyyy/MM/dd – HH:mm').format(n.createdAt), style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+              trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async { await n.delete(); setState(() {}); }),
+            ),
+          );
+        },
+      ),
+    );
+  }
+  Future<void> _addNote(BuildContext context) async {
+    final c = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ملاحظة جديدة'),
+        content: TextField(controller: c, maxLines: 4, autofocus: true, decoration: const InputDecoration(labelText: 'النص', border: OutlineInputBorder())),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () async {
+              final t = c.text.trim(); if (t.isEmpty) return;
+              await _box.add(Note(text: t)); if (context.mounted) Navigator.pop(ctx); setState(() {});
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+}
