@@ -1,0 +1,70 @@
+name: Build Ingaz App
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- الخطوة السحرية: ترتيب الملفات في مكانها الصحيح ---
+      - name: Fix Nested Folders Automatically
+        run: |
+          mkdir -p lib/models lib/providers lib/screens lib/services
+          find . -name "main.dart" -exec cp {} lib/main.dart \;
+          find . -name "task.dart" -exec cp {} lib/models/task.dart \;
+          find . -name "session.dart" -exec cp {} lib/models/session.dart \;
+          find . -name "subject.dart" -exec cp {} lib/models/subject.dart \;
+          find . -name "schedule_slot.dart" -exec cp {} lib/models/schedule_slot.dart \;
+          find . -name "plant.dart" -exec cp {} lib/models/plant.dart \;
+          find . -name "note.dart" -exec cp {} lib/models/note.dart \;
+          find . -name "task_provider.dart" -exec cp {} lib/providers/task_provider.dart \;
+          find . -name "timer_provider.dart" -exec cp {} lib/providers/timer_provider.dart \;
+          find . -name "stats_provider.dart" -exec cp {} lib/providers/stats_provider.dart \;
+          find . -name "schedule_provider.dart" -exec cp {} lib/providers/schedule_provider.dart \;
+          find . -name "garden_provider.dart" -exec cp {} lib/providers/garden_provider.dart \;
+          find . -name "home_screen.dart" -exec cp {} lib/screens/home_screen.dart \;
+          find . -name "tasks_screen.dart" -exec cp {} lib/screens/tasks_screen.dart \;
+          find . -name "stats_screen.dart" -exec cp {} lib/screens/stats_screen.dart \;
+          find . -name "notes_screen.dart" -exec cp {} lib/screens/notes_screen.dart \;
+          find . -name "garden_screen.dart" -exec cp {} lib/screens/garden_screen.dart \;
+          find . -name "schedule_screen.dart" -exec cp {} lib/screens/schedule_screen.dart \;
+          find . -name "subjects_screen.dart" -exec cp {} lib/screens/subjects_screen.dart \;
+          find . -name "notification_service.dart" -exec cp {} lib/services/notification_service.dart \;
+          find . -name "pubspec.yaml" -not -path "./pubspec.yaml" -delete
+      # -----------------------------------------------------
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Setup Android project
+        run: flutter create . --platforms=android
+
+      - name: Add Notification Permissions to Manifest
+        run: |
+          sed -i '/<application>/i \    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application>/i \    <uses-permission android:name="android.permission.VIBRATE"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application>/i \    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>' android/app/src/main/AndroidManifest.xml
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingaz-full-app
+          path: build/app/outputs/flutter-apk/app-release.apk
