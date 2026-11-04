@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../providers/garden_provider.dart';
+
+class GardenScreen extends StatelessWidget {
+  const GardenScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final g = context.watch<GardenProvider>();
+    final plants = g.plants;
+    return Scaffold(
+      appBar: AppBar(title: const Text('حديقتي 🌱'), actions: [
+        IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _confirmReset(context, g)),
+      ]),
+      body: Column(
+        children: [
+          _StatsCard(minutes: g.totalMinutes, plants: plants.length),
+          Expanded(
+            child: plants.isEmpty ? const Center(child: Text('كل 30 دقيقة تركيز تزرع شجرة هنا!'))
+            : GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 0.85),
+              itemCount: plants.length,
+              itemBuilder: (_, i) {
+                final p = plants[i];
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Expanded(child: Icon(Icons.nature, size: 64, color: Colors.green)),
+                    const SizedBox(height: 4),
+                    Text(DateFormat('MM/dd').format(p.plantedAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  void _confirmReset(BuildContext context, GardenProvider g) {
+    showDialog(context: context, builder: (_) => AlertDialog(
+      title: const Text('إعادة تعيين'), content: const Text('سيتم حذف جميع الأشجار.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () { g.reset(); Navigator.pop(context); }, child: const Text('حذف')),
+      ],
+    ));
+  }
+}
+class _StatsCard extends StatelessWidget {
+  final int minutes; final int plants;
+  const _StatsCard({required this.minutes, required this.plants});
+  @override
+  Widget build(BuildContext context) {
+    final h = minutes ~/ 60; final m = minutes % 60;
+    return Card(
+      margin: const EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+          _Stat(label: 'وقت التركيز', value: '${h}س ${m}د'),
+          _Stat(label: 'نباتات', value: '$plants'),
+          _Stat(label: 'التالي', value: '${30 - (minutes % 30)} دقيقة'),
+        ]),
+      ),
+    );
+  }
+}
+class _Stat extends StatelessWidget {
+  final String label, value;
+  const _Stat({required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+    const SizedBox(height: 2),
+    Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+  ]);
+}
